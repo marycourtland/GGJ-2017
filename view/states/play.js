@@ -23,39 +23,49 @@ Play.prototype = {
       game.line = []
 
       game.waveline = new Waveline(0, Settings.gameDims.x, function(x) { return 10 * Math.sin(x/50); })
-      game.waveline.moveTo(Settings.gameDims.y - 100);
+      game.waveline.moveTo(Settings.gameDims.y/2);
 
       // todo: what if there are too many of these? don't respawn them?
       game.inputWaveline = spawnInputWaveline();
 
+      game.inputDirection = -1;
       game.inputScale = 0;
       game.g = game.add.graphics(0,0);
     },
 
     update: function () {
       if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-        game.inputScale += 1/50;
+        game.inputScale += Settins.rotateScale;
         game.inputWaveline.scaleTo(Math.sin(game.inputScale));
       }
 
       if (game.input.keyboard.isDown(Phaser.Keyboard.LEFT)) {
-        game.inputWaveline.shift(-1);
+        game.inputWaveline.shift(-Settings.shiftSpeed);
       }
 
       if (game.input.keyboard.isDown(Phaser.Keyboard.RIGHT)) {
-        game.inputWaveline.shift(1);
+        game.inputWaveline.shift(Settings.shiftSpeed);
       }
 
-      if (game.input.keyboard.isDown(Phaser.Keyboard.DOWN)) {
+      if (
+        (game.input.keyboard.isDown(Phaser.Keyboard.DOWN) && game.inputDirection == 1)
+        ||
+        (game.input.keyboard.isDown(Phaser.Keyboard.UP) && game.inputDirection == -1)
+      ) {
         // Move faster
-        game.inputWaveline.moveBy(8);
+        game.inputWaveline.moveBy(Settings.superFallSpeed * game.inputDirection);
       }
       else {
-        game.inputWaveline.moveBy(2);
+        game.inputWaveline.moveBy(Settings.fallSpeed * game.inputDirection);
       }
 
 
-      if (game.inputWaveline.y > game.waveline.y) {
+      if (
+        (game.inputWaveline.y > game.waveline.y && game.inputDirection == 1)
+        ||
+        (game.inputWaveline.y < game.waveline.y && game.inputDirection == -1)
+       ) {
+        game.inputDirection *= -1;
         game.waveline.add(game.inputWaveline);
         game.inputWaveline = spawnInputWaveline();
       }
@@ -85,7 +95,13 @@ function spawnInputWaveline() {
   })
   waveline.shift(x0 - x0_temporary);
 
-  waveline.moveTo(100);
+  // Is it going down from the top or up from below?
+  if (game.inputDirection === 1) {
+    waveline.moveTo(Settings.inputStart);
+  }
+  else {
+    waveline.moveTo(Settings.gameDims.y - Settings.inputStart);
+  }
   return waveline;
 }
 

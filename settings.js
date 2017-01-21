@@ -9,4 +9,13 @@ function getUrlParam(key) {
 }
 
 Settings.gameDims = {x: window.innerWidth, y: window.innerHeight}
-Settings.dx = 1;
+Settings.dx = 1; // line resolution
+
+Settings.shiftSpeed = 2;
+Settings.fallSpeed = 2;
+Settings.superFallSpeed = 8;
+Settings.rotateScale = 1/50;
+
+
+Settings.inputStart = 100;
+
