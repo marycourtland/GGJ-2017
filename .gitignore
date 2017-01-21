@@ -1,0 +1,4 @@
+game-bundled.js
+node_modules/*
+*.xcf
+*.swp
