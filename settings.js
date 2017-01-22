@@ -11,6 +11,10 @@ function getUrlParam(key) {
 Settings.gameDims = {x: window.innerWidth, y: window.innerHeight}
 Settings.dx = 1; // line resolution
 
+// color of lines and stuff
+Settings.gameColor= 0x0011cc;
+Settings.gameColorStr = '#0011cc';
+
 Settings.shiftSpeed = 2;
 Settings.fallSpeed = 2;
 Settings.superFallSpeed = 8;
