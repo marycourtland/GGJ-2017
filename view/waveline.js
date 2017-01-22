@@ -104,3 +104,6 @@ Waveline.prototype.render = function(g) {
   }
 }
 
+Waveline.prototype.getDataForAudio = function() {
+  return this.points.map(function(p) { return p.y });
+}

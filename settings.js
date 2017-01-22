@@ -11,6 +11,8 @@ function getUrlParam(key) {
 Settings.gameDims = {x: window.innerWidth, y: window.innerHeight}
 Settings.dx = 1; // line resolution
 
+Settings.cell = 20; // everything discretized
+
 // color of lines and stuff
 Settings.gameColor= 0x0011cc;
 Settings.gameColorStr = '#0011cc';

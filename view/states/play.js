@@ -3,6 +3,7 @@ var Settings = window.Settings;
 var AssetData = require('../asset_data');
 var Waveline = require('../waveline')
 var Data = require('../data')
+var Sound = require('../sound')
 var game;
 
 var Context;
@@ -24,7 +25,9 @@ Play.prototype = {
     create: function () {
       game.line = []
 
-      game.waveline = new Waveline(0, Settings.gameDims.x, function(x) { return 10 * Math.sin(x/50); })
+      var L = Settings.gameDims.x;
+      var n = 3;
+      game.waveline = new Waveline(0, Settings.gameDims.x, function(x) { return 10 * Math.sin(x*(n*2*Math.PI)/L); })
       game.waveline.moveTo(Settings.gameDims.y/2);
 
       // todo: what if there are too many of these? don't respawn them?
@@ -86,6 +89,8 @@ Play.prototype = {
         game.inputDirection *= -1;
         game.waveline.add(game.inputWaveline);
         game.inputWaveline = Play.spawnInputWaveline();
+
+        Sound.playData(game.waveline.getDataForAudio(), 2);
 
         Play.detectDangerZone();
 
@@ -178,6 +183,7 @@ function createWaveform(params) {
     }
     return item;
   })
+  console.log(_params)
   return function(x) {
     var y = 1;
     var p;
@@ -208,7 +214,7 @@ Play.spawnInputWaveline = function() {
 
   var waveline = new Waveline(0, Settings.gameDims.x, createWaveform(chooseRandomPulse()));
 
-  //waveline.shift(x0 - x0_temporary);
+  waveline.shift(x0 - x0_temporary);
 
   // Is it going down from the top or up from below?
   if (game.inputDirection === 1) {
