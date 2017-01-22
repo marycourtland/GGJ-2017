@@ -8,7 +8,7 @@ function getUrlParam(key) {
     else return null;
 }
 
-Settings.gameDims = {x: window.innerWidth, y: window.innerHeight}
+Settings.gameDims = {x: 800, y: 600} 
 Settings.dx = 1; // line resolution
 
 Settings.cell = 20; // everything discretized
