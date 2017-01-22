@@ -44,3 +44,23 @@ Data.dangerZones = [
   {color: 0xff4400, radius: 200, text: "Warning: Approaching destabilization!"},
   {color: 0xff0000, radius: 250, text: "!!! DESTABILIZED !!", death: true},
 ]
+
+Data.pulseTypes = {
+  standard: {
+    frequency: 0.8,
+    params: [
+      {type: 'sine', magnitude: [30, 0.5], freq: [1/6, 0.1]},
+      {type: 'gaussian', spread: [300, 250], shift: [Settings.gameDims.x / 2, 0]}
+    ]
+  },
+  easy: {
+    frequency: 0.2,
+    params: [
+      // 4 not 2 ???????
+      {type: 'sine', magnitude: [40, 0], freq: [1/30, 0], shift: [Settings.gameDims.x / 4, 0]},
+      {type: 'gaussian', spread: [200, 0], shift: [Settings.gameDims.x / 4, 0]}
+    ]
+  }
+
+
+}

@@ -167,17 +167,12 @@ Play.levelUp = function(newLevel) {
 }
 
 function createWaveform(params) {
+  var flip = Math.random() < 0.5;
   var _params = params.map(function(p) {
     var item = {};
     for (var field in p) {
       item[field] = p[field];
-      if (field === 'magnitude') {
-        item[field] = p[field][0] + randFloat(p[field][1]);
-      }
-      if (field === 'freq') {
-        item[field] = p[field][0] + randFloat(p[field][1]);
-      }
-      if (field === 'spread') {
+      if (['magnitude', 'freq', 'spread', 'shift'].indexOf(field) !== -1) {
         item[field] = p[field][0] + randFloat(p[field][1]);
       }
     }
@@ -188,13 +183,17 @@ function createWaveform(params) {
     var p;
     for (var i = 0; i < _params.length; i++) {
       p = _params[i];
+      if ('shift' in p) {
+        x -= p.shift;
+      }
       if (p.type === 'sine') {
-        y *= p.magnitude * Math.sin(x * p.freq);
+        y *= p.magnitude * Math.cos(x * p.freq);
       }
       else if (p.type === 'gaussian') {
-        y *= Math.exp(-Math.pow(x - p.center, 2) / (50*p.spread));
+        y *= Math.exp(-Math.pow(x, 2) / (50*p.spread));
       }
     }
+    if (flip) y *= -1; // just make sure this is always flip flopping
     return y;
   }
 }
@@ -204,14 +203,12 @@ Play.spawnInputWaveline = function() {
   // then it gets shifted to the real x0 later
   var x0_temporary = Settings.gameDims.x / 2;
 
-  var params = [
-    {type: 'sine', magnitude: [30, 0.5], freq: [1/6, 0.1]},
-    {type: 'gaussian', spread: [300, 250], center: x0_temporary}
-  ]
+  // the real x0
+  var x0 = Math.floor(Math.random() * Settings.gameDims.x);
 
-  var waveline = new Waveline(0, Settings.gameDims.x, createWaveform(params));
+  var waveline = new Waveline(0, Settings.gameDims.x, createWaveform(chooseRandomPulse()));
 
-  waveline.shift(x0 - x0_temporary);
+  //waveline.shift(x0 - x0_temporary);
 
   // Is it going down from the top or up from below?
   if (game.inputDirection === 1) {
@@ -221,6 +218,20 @@ Play.spawnInputWaveline = function() {
     waveline.moveTo(Settings.gameDims.y - Settings.inputStart);
   }
   return waveline;
+}
+
+function chooseRandomPulse() {
+  var r = Math.random();
+  var R = 0;
+  var pulse; 
+  for (var type in Data.pulseTypes) {
+    R += Data.pulseTypes[type].frequency;
+    if (r < R) {
+      pulse = Data.pulseTypes[type].params;
+      break;
+    }
+  }
+  return pulse;
 }
 
 Play.death = function() {
