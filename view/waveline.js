@@ -96,7 +96,7 @@ Waveline.prototype.render = function(g) {
   })
 
   var p0 = renderedPoints[0];
-  g.lineStyle(4, Settings.gameColor, 1);
+  g.lineStyle(3, Settings.gameColor, 1);
   g.moveTo(p0.x, p0.y)
   for (var i = 1; i < renderedPoints.length; i++) {
     var p = renderedPoints[i];

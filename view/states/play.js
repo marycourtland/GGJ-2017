@@ -4,6 +4,7 @@ var AssetData = require('../asset_data');
 var Waveline = require('../waveline')
 var Data = require('../data')
 var Sound = require('../sound')
+var createWaveform = require('../createwaveform')
 var game;
 
 var Context;
@@ -169,39 +170,9 @@ Play.levelUp = function(newLevel) {
 
   // Speed up the falling
   game.currentFallSpeed = Data.levels[game.level].fallSpeed;
-}
 
-function createWaveform(params) {
-  var flip = Math.random() < 0.5;
-  var _params = params.map(function(p) {
-    var item = {};
-    for (var field in p) {
-      item[field] = p[field];
-      if (['magnitude', 'freq', 'spread', 'shift'].indexOf(field) !== -1) {
-        item[field] = p[field][0] + randFloat(p[field][1]);
-      }
-    }
-    return item;
-  })
-  console.log(_params)
-  return function(x) {
-    var y = 1;
-    var p;
-    for (var i = 0; i < _params.length; i++) {
-      p = _params[i];
-      if ('shift' in p) {
-        x -= p.shift;
-      }
-      if (p.type === 'sine') {
-        y *= p.magnitude * Math.cos(x * p.freq);
-      }
-      else if (p.type === 'gaussian') {
-        y *= Math.exp(-Math.pow(x, 2) / (50*p.spread));
-      }
-    }
-    if (flip) y *= -1; // just make sure this is always flip flopping
-    return y;
-  }
+  // Up the sound frequency a bit
+  Sound.setMasterFrequency(Data.levels[game.level].soundFrequency);
 }
 
 Play.spawnInputWaveline = function() {
@@ -226,6 +197,11 @@ Play.spawnInputWaveline = function() {
   return waveline;
 }
 
+Play.death = function() {
+  //game.outputs.death.setText('Death!')
+  game.state.start('End')
+}
+
 function chooseRandomPulse() {
   var r = Math.random();
   var R = 0;
@@ -238,16 +214,4 @@ function chooseRandomPulse() {
     }
   }
   return pulse;
-}
-
-Play.death = function() {
-  //game.outputs.death.setText('Death!')
-  game.state.start('End')
-}
-
-function randFloat(a, b) {
-  if (typeof b === 'undefined') {
-    b = a; a = -b;
-  }
-  return Math.random() * (b-a) + a;
 }

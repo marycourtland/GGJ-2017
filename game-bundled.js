@@ -12,7 +12,7 @@ window.onload = function() {
     View.load(Context);
 }
 
-},{"./view":4}],2:[function(require,module,exports){
+},{"./view":5}],2:[function(require,module,exports){
 module.exports = AssetData = {
     //blue: {
     //    url:     'images/colors/blue2.png',
@@ -21,6 +21,49 @@ module.exports = AssetData = {
 }
 
 },{}],3:[function(require,module,exports){
+
+module.exports = function createWaveform(params) {
+  var flip = Math.random() < 0.5;
+  var _params = params.map(function(p) {
+    var item = {};
+    for (var field in p) {
+      item[field] = p[field];
+      if (['magnitude', 'freq', 'spread', 'shift'].indexOf(field) !== -1) {
+        item[field] = p[field][0] + randFloat(p[field][1]);
+      }
+    }
+    return item;
+  })
+
+  return function(x) {
+    var y = 1;
+    var p;
+    for (var i = 0; i < _params.length; i++) {
+      p = _params[i];
+      if ('shift' in p) {
+        x -= p.shift;
+      }
+      if (p.type === 'sine') {
+        y *= p.magnitude * Math.cos(x * 2 * Math.PI * p.freq);
+      }
+      else if (p.type === 'gaussian') {
+        y *= Math.exp(-Math.pow(x, 2) / (50*p.spread));
+      }
+    }
+    if (flip) y *= -1; // just make sure this is always flip flopping
+    return y;
+  }
+}
+
+
+function randFloat(a, b) {
+  if (typeof b === 'undefined') {
+      b = a; a = -b;
+    }
+  return Math.random() * (b-a) + a;
+}
+
+},{}],4:[function(require,module,exports){
 module.exports = Data = {};
 
 Data.scoreLevels = {
@@ -36,29 +79,39 @@ Data.scoreLevels = {
 
 Data.levels = {
   1: {
-    fallSpeed:2
+    fallSpeed:2,
   },
   2: {
-    fallSpeed:2.2
+    fallSpeed:2.2,
   },
   3: {
-    fallSpeed:2.5
+    fallSpeed:2.5,
   },
   4: {
-    fallSpeed:2.8
+    fallSpeed:2.8,
   },
   5: {
-    fallSpeed:3.2
+    fallSpeed:3.2,
   },
   6: {
-    fallSpeed:3.6
+    fallSpeed:3.6,
   },
   7: {
-    fallSpeed:4.0
+    fallSpeed:4.0,
   },
   8: {
-    fallSpeed:4.4
+    fallSpeed:4.4,
   }
+}
+var totalLevels = Object.keys(Data.levels).length;
+
+
+// Increase sound by a half step each level
+
+Data.levels[1].soundFrequency = 1/150;
+var halfstep = 1.05946;
+for (var l = 2; l < totalLevels; l++ ) {
+  Data.levels[l].soundFrequency = Data.levels[l-1].soundFrequency * halfstep;
 }
 
 Data.dangerZones = [
@@ -70,25 +123,25 @@ Data.dangerZones = [
 
 Data.pulseTypes = {
   standard: {
-    frequency: 0.8,
+    frequency: 0.1,
     params: [
-      {type: 'sine', magnitude: [30, 0.5], freq: [1/6, 0.1]},
-      {type: 'gaussian', spread: [300, 250], shift: [Settings.gameDims.x / 2, 0]}
+      {type: 'sine', magnitude: [30, 0.5], freq: [1/30, 0.01]},
+      {type: 'gaussian', spread: [100, 50], shift: [Settings.gameDims.x / 2, 0]}
     ]
   },
   easy: {
-    frequency: 0.2,
+    frequency: 0.9,
     params: [
       // 4 not 2 ???????
-      {type: 'sine', magnitude: [40, 0], freq: [1/30, 0], shift: [Settings.gameDims.x / 4, 0]},
-      {type: 'gaussian', spread: [200, 0], shift: [Settings.gameDims.x / 4, 0]}
+      {type: 'sine', magnitude: [50, 20], freq: [1/400, 0.01], shift: [Settings.gameDims.x / 4, 0]},
+      {type: 'gaussian', spread: [400, 100], shift: [Settings.gameDims.x / 4, 0]}
     ]
   }
 
 
 }
 
-},{}],4:[function(require,module,exports){
+},{}],5:[function(require,module,exports){
 module.exports = view = {};
 
 view.load = function(Context) {
@@ -106,21 +159,51 @@ view.load = function(Context) {
 };
 
 
-},{"./states":8}],5:[function(require,module,exports){
+},{"./states":9}],6:[function(require,module,exports){
+var xy = window.XY;
+var createWaveform = require('./createwaveform');
 module.exports = sound = {};
-
 
 var audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 
 var masterVolume = audioCtx.createGain();
 masterVolume.connect(audioCtx.destination);
-masterVolume.gain.value = 1;
+masterVolume.gain.value = 0.5;
+
+
+sound.masterWaveform = [
+  {type: 'sine', magnitude: [1, 0], freq: [1/150, 0]},
+  //{type: 'sine', magnitude: [1, 0], freq: [0.007063086666666667, 0]},
+];
+
+sound.setMasterFrequency = function(f) {
+  this.masterWaveform[0].freq[0] = f;
+}
 
 sound.playData = function(data, secondsInData) {
   function normalize(data) {
     var max = 0;
     data.forEach(function(d) { max = Math.max(max, Math.abs(d)); })
     return data.map(function(d) { return d / max; })
+  }
+
+  function downsample(data, framesPerDatum, shouldInterpolate) {
+    var output = [];
+    var D = data.length;
+    for (var i = 0; i < framesPerDatum * D; i++) {
+      var _i = Math.floor(i / framesPerDatum);
+
+      if (shouldInterpolate) {
+        var di = i % framesPerDatum;
+        var p1 = xy(_i, data[_i]);
+        var p2 = xy(_i + 1, data[_i + 1]);
+        var x = _i + di / framesPerDatum; 
+        var next = interpolate(x, p1, p2).y
+      }
+
+      output.push(next);
+    }
+    return output;
   }
 
   var normalizedData = normalize(data);
@@ -133,18 +216,26 @@ sound.playData = function(data, secondsInData) {
   // Adjust the time span so that framesPerDatum is an integer
   framesPerDatum -= (framesPerDatum % 1);
   framesinData = framesPerDatum * D;
-  secondsInData = framesInData / audioCtx.sampleRate;80
+  secondsInData = framesInData / audioCtx.sampleRate;
   var totalFrames = audioCtx.sampleRate * secondsInData;
 
-  // Output data to audio buffer
+  var downsampled = downsample(normalizedData, framesPerDatum, true);
+  var outputData = [];
+  var waveform = createWaveform(sound.masterWaveform);
+  for (var i = 0; i < downsampled.length; i++) {
+    outputData.push(downsampled[i] * waveform(i));
+  }
+  
 
+  // Output data to audio buffer
   var wavelineBuffer = audioCtx.createBuffer(2, totalFrames, audioCtx.sampleRate);
 
   for (var channel = 0; channel < 2; channel++) {
     var buffering = wavelineBuffer.getChannelData(channel);
     for (var i = 0; i < totalFrames; i++) {
       var _i = Math.floor(i / framesPerDatum);
-      buffering[i] = normalizedData[_i];
+      //buffering[i] = normalizedData[_i];
+      buffering[i] = outputData[i];
     }
   }
 
@@ -154,8 +245,16 @@ sound.playData = function(data, secondsInData) {
   source.start();
 }
 
+interpolate = function(x, p1, p2) { // Linear
+  if (!p1) { return xy(p2.x, p2.y); }
+  if (!p2) { return xy(p1.x, p1.y); }
+  if (p1.x === p2.x) { return xy(p1.x, p2.y); }
 
-},{}],6:[function(require,module,exports){
+  var f = (x - p1.x) / (p2.x - p1.x);
+  return xy(x, p1.y + f*(p2.y - p1.y));
+}
+
+},{"./createwaveform":3}],7:[function(require,module,exports){
 var Settings = window.Settings;
 var AssetData = require('../asset_data');
 
@@ -180,7 +279,7 @@ Boot.prototype = {
     }
 }
 
-},{"../asset_data":2}],7:[function(require,module,exports){
+},{"../asset_data":2}],8:[function(require,module,exports){
 var game;
 
 module.exports = End = function (_game) { 
@@ -196,7 +295,7 @@ End.prototype = {
     },
 };
 
-},{}],8:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 module.exports = GameStates = {
     Boot: require('./boot.js'),
     Menu: require('./menu.js'),
@@ -204,7 +303,7 @@ module.exports = GameStates = {
     End:  require('./end.js'),
 }
 
-},{"./boot.js":6,"./end.js":7,"./menu.js":9,"./play.js":10}],9:[function(require,module,exports){
+},{"./boot.js":7,"./end.js":8,"./menu.js":10,"./play.js":11}],10:[function(require,module,exports){
 var game;
 
 module.exports = Menu = function (_game) { 
@@ -220,13 +319,14 @@ Menu.prototype = {
     },
 };
 
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 var xy = window.XY;
 var Settings = window.Settings;
 var AssetData = require('../asset_data');
 var Waveline = require('../waveline')
 var Data = require('../data')
 var Sound = require('../sound')
+var createWaveform = require('../createwaveform')
 var game;
 
 var Context;
@@ -392,39 +492,9 @@ Play.levelUp = function(newLevel) {
 
   // Speed up the falling
   game.currentFallSpeed = Data.levels[game.level].fallSpeed;
-}
 
-function createWaveform(params) {
-  var flip = Math.random() < 0.5;
-  var _params = params.map(function(p) {
-    var item = {};
-    for (var field in p) {
-      item[field] = p[field];
-      if (['magnitude', 'freq', 'spread', 'shift'].indexOf(field) !== -1) {
-        item[field] = p[field][0] + randFloat(p[field][1]);
-      }
-    }
-    return item;
-  })
-  console.log(_params)
-  return function(x) {
-    var y = 1;
-    var p;
-    for (var i = 0; i < _params.length; i++) {
-      p = _params[i];
-      if ('shift' in p) {
-        x -= p.shift;
-      }
-      if (p.type === 'sine') {
-        y *= p.magnitude * Math.cos(x * p.freq);
-      }
-      else if (p.type === 'gaussian') {
-        y *= Math.exp(-Math.pow(x, 2) / (50*p.spread));
-      }
-    }
-    if (flip) y *= -1; // just make sure this is always flip flopping
-    return y;
-  }
+  // Up the sound frequency a bit
+  Sound.setMasterFrequency(Data.levels[game.level].soundFrequency);
 }
 
 Play.spawnInputWaveline = function() {
@@ -449,6 +519,11 @@ Play.spawnInputWaveline = function() {
   return waveline;
 }
 
+Play.death = function() {
+  //game.outputs.death.setText('Death!')
+  game.state.start('End')
+}
+
 function chooseRandomPulse() {
   var r = Math.random();
   var R = 0;
@@ -463,19 +538,7 @@ function chooseRandomPulse() {
   return pulse;
 }
 
-Play.death = function() {
-  //game.outputs.death.setText('Death!')
-  game.state.start('End')
-}
-
-function randFloat(a, b) {
-  if (typeof b === 'undefined') {
-    b = a; a = -b;
-  }
-  return Math.random() * (b-a) + a;
-}
-
-},{"../asset_data":2,"../data":3,"../sound":5,"../waveline":11}],11:[function(require,module,exports){
+},{"../asset_data":2,"../createwaveform":3,"../data":4,"../sound":6,"../waveline":12}],12:[function(require,module,exports){
 var xy = window.XY;
 var Settings = window.Settings;
 
@@ -574,7 +637,7 @@ Waveline.prototype.render = function(g) {
   })
 
   var p0 = renderedPoints[0];
-  g.lineStyle(4, Settings.gameColor, 1);
+  g.lineStyle(3, Settings.gameColor, 1);
   g.moveTo(p0.x, p0.y)
   for (var i = 1; i < renderedPoints.length; i++) {
     var p = renderedPoints[i];

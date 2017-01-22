@@ -13,29 +13,39 @@ Data.scoreLevels = {
 
 Data.levels = {
   1: {
-    fallSpeed:2
+    fallSpeed:2,
   },
   2: {
-    fallSpeed:2.2
+    fallSpeed:2.2,
   },
   3: {
-    fallSpeed:2.5
+    fallSpeed:2.5,
   },
   4: {
-    fallSpeed:2.8
+    fallSpeed:2.8,
   },
   5: {
-    fallSpeed:3.2
+    fallSpeed:3.2,
   },
   6: {
-    fallSpeed:3.6
+    fallSpeed:3.6,
   },
   7: {
-    fallSpeed:4.0
+    fallSpeed:4.0,
   },
   8: {
-    fallSpeed:4.4
+    fallSpeed:4.4,
   }
+}
+var totalLevels = Object.keys(Data.levels).length;
+
+
+// Increase sound by a half step each level
+
+Data.levels[1].soundFrequency = 1/150;
+var halfstep = 1.05946;
+for (var l = 2; l < totalLevels; l++ ) {
+  Data.levels[l].soundFrequency = Data.levels[l-1].soundFrequency * halfstep;
 }
 
 Data.dangerZones = [
@@ -47,18 +57,18 @@ Data.dangerZones = [
 
 Data.pulseTypes = {
   standard: {
-    frequency: 0.8,
+    frequency: 0.1,
     params: [
-      {type: 'sine', magnitude: [30, 0.5], freq: [1/6, 0.1]},
-      {type: 'gaussian', spread: [300, 250], shift: [Settings.gameDims.x / 2, 0]}
+      {type: 'sine', magnitude: [40, 0.5], freq: [1/30, 0.01]},
+      {type: 'gaussian', spread: [100, 50], shift: [Settings.gameDims.x / 2, 0]}
     ]
   },
   easy: {
-    frequency: 0.2,
+    frequency: 0.9,
     params: [
       // 4 not 2 ???????
-      {type: 'sine', magnitude: [40, 0], freq: [1/30, 0], shift: [Settings.gameDims.x / 4, 0]},
-      {type: 'gaussian', spread: [200, 0], shift: [Settings.gameDims.x / 4, 0]}
+      {type: 'sine', magnitude: [50, 20], freq: [1/400, 0.01], shift: [Settings.gameDims.x / 4, 0]},
+      {type: 'gaussian', spread: [400, 100], shift: [Settings.gameDims.x / 4, 0]}
     ]
   }
 
