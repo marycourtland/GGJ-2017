@@ -52,7 +52,7 @@ Play.prototype = {
 
     update: function () {
       if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-        game.inputScale += Settins.rotateScale;
+        game.inputScale += Settings.rotateScale;
         game.inputWaveline.scaleTo(Math.sin(game.inputScale));
       }
 
@@ -166,22 +166,51 @@ Play.levelUp = function(newLevel) {
   game.currentFallSpeed = Data.levels[game.level].fallSpeed;
 }
 
+function createWaveform(params) {
+  var _params = params.map(function(p) {
+    var item = {};
+    for (var field in p) {
+      item[field] = p[field];
+      if (field === 'magnitude') {
+        item[field] = p[field][0] + randFloat(p[field][1]);
+      }
+      if (field === 'freq') {
+        item[field] = p[field][0] + randFloat(p[field][1]);
+      }
+      if (field === 'spread') {
+        item[field] = p[field][0] + randFloat(p[field][1]);
+      }
+    }
+    return item;
+  })
+  return function(x) {
+    var y = 1;
+    var p;
+    for (var i = 0; i < _params.length; i++) {
+      p = _params[i];
+      if (p.type === 'sine') {
+        y *= p.magnitude * Math.sin(x * p.freq);
+      }
+      else if (p.type === 'gaussian') {
+        y *= Math.exp(-Math.pow(x - p.center, 2) / (50*p.spread));
+      }
+    }
+    return y;
+  }
+}
+
 Play.spawnInputWaveline = function() {
-  // base wave
-  var magnitude = 30 * randFloat(-5, 5);
-  var freq = (1/6) + randFloat(-0.1, 0.1);
-
-  // envelope
-  var x0 = Math.floor(Math.random() * Settings.gameDims.x);
-  var spread = 300 + randFloat(-250, 250)
-
   // this is so that the wave gets computed completely (no boundary snafus) 
   // then it gets shifted to the real x0 later
   var x0_temporary = Settings.gameDims.x / 2;
 
-  var waveline = new Waveline(0, Settings.gameDims.x, function(x) {
-    return 30 * Math.sin(x * freq) *  Math.exp(-Math.pow(x-x0_temporary, 2)/(50 * spread))
-  })
+  var params = [
+    {type: 'sine', magnitude: [30, 0.5], freq: [1/6, 0.1]},
+    {type: 'gaussian', spread: [300, 250], center: x0_temporary}
+  ]
+
+  var waveline = new Waveline(0, Settings.gameDims.x, createWaveform(params));
+
   waveline.shift(x0 - x0_temporary);
 
   // Is it going down from the top or up from below?
@@ -197,12 +226,11 @@ Play.spawnInputWaveline = function() {
 Play.death = function() {
   //game.outputs.death.setText('Death!')
   game.state.start('End')
-
 }
 
 function randFloat(a, b) {
   if (typeof b === 'undefined') {
-    b = a; a = 0;
+    b = a; a = -b;
   }
   return Math.random() * (b-a) + a;
 }
