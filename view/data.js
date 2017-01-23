@@ -40,7 +40,7 @@ Data.levels = {
 var totalLevels = Object.keys(Data.levels).length;
 
 for (var l in Data.levels) {
-  Data.levels[l].fallSpeed -= 1;
+  Data.levels[l].fallSpeed -= 0.5;
 }
 
 

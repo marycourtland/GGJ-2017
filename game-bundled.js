@@ -117,7 +117,7 @@ Data.levels = {
 var totalLevels = Object.keys(Data.levels).length;
 
 for (var l in Data.levels) {
-  Data.levels[l].fallSpeed -= 1;
+  Data.levels[l].fallSpeed -= 0.5;
 }
 
 
@@ -516,6 +516,11 @@ Play.prototype = {
       Play.outputs.warning.setText(game.currentWarning.zone.text);
       var warning_dy = (game.currentWarning.peak.y > 0) ? 10 : -30;
       Play.outputs.warning.reset(game.currentWarning.peak.x, game.currentWarning.peak.y + Play.waveline.y + warning_dy);
+
+      // Fade texts
+      for (var t in Play.outputs) {
+        fadeText(Play.outputs[t])
+      }
     }
 };
 
@@ -562,6 +567,8 @@ Play.levelUp = function(newLevel) {
 
   // Up the sound frequency a bit
   Sound.setMasterFrequency(Data.levels[game.level].soundFrequency);
+
+  startTextFade(Play.outputs.levelup, 100, 0.6)
 }
 
 Play.spawnInputWaveline = function() {
@@ -607,6 +614,25 @@ function chooseRandomPulse() {
     }
   }
   return pulse;
+}
+
+function startTextFade(text, lifetime, initialAlpha) {
+  text.alpha = initialAlpha || 1;
+  text.fadeLifetime = lifetime;
+  text.fadeIncrement = text.alpha / lifetime; // linear tweening
+}
+
+function fadeText(text) {
+  if (!text.fadeLifetime) return;
+  text.alpha -= text.fadeIncrement;
+  if (text.alpha < 0) {
+    // Stop the fading
+    text.alpha = 0;
+    delete text.fadeLifetime;
+    delete text.fadeIncrement;;
+  }
+
+
 }
 
 },{"../asset_data":2,"../createwaveform":3,"../data":4,"../sound":6,"../waveline":12}],12:[function(require,module,exports){
