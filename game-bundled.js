@@ -174,7 +174,28 @@ view.load = function(Context) {
 };
 
 
-},{"./states":9}],6:[function(require,module,exports){
+},{"./states":10}],6:[function(require,module,exports){
+var Data = require('./data');
+
+module.exports = renderDangerZones = function(g) {
+  // Set up danger zones
+  var y = 0;
+  Data.dangerZones.forEach(function(zone) {
+    var yPrev = y;
+    y = zone.radius;
+
+    var y0 = Settings.gameDims.y/2;
+    var xmax = Settings.gameDims.x;
+
+    g.beginFill(zone.color, 0.5)
+    g.drawRect(0, y0 - y, xmax, y - yPrev);
+    g.drawRect(0, y0 + yPrev, xmax, y - yPrev)
+    g.endFill();
+  })  
+}
+
+
+},{"./data":4}],7:[function(require,module,exports){
 var xy = window.XY;
 var createWaveform = require('./createwaveform');
 module.exports = sound = {};
@@ -268,7 +289,7 @@ interpolate = function(x, p1, p2) { // Linear
   return xy(x, p1.y + f*(p2.y - p1.y));
 }
 
-},{"./createwaveform":3}],7:[function(require,module,exports){
+},{"./createwaveform":3}],8:[function(require,module,exports){
 var Settings = window.Settings;
 var AssetData = require('../asset_data');
 
@@ -293,23 +314,51 @@ Boot.prototype = {
     }
 }
 
-},{"../asset_data":2}],8:[function(require,module,exports){
+},{"../asset_data":2}],9:[function(require,module,exports){
 var game;
+var renderDangerZones = require('../renderdangerzones');
 
 module.exports = End = function (_game) { 
     game = _game;
 };
 
-End.prototype = {
+End.prototype = { 
     create: function () {
-        console.log('Game state: End');
-        // Todo :)
+      console.log('Game state: End');
+      this.g = game.add.graphics(0,0);
 
-        game.state.start('Menu');
+      this.outputs = {};
+      var lines = [
+        'well done!',
+        'you reached level ' + game.level,
+        'score: ' + game.score,
+        '',
+        'spacebar to replay'
+      ];
+      this.outputs.info = game.add.text(Settings.gameDims.x / 2, Settings.gameDims.y / 2, lines.join('\n'), {
+        fill: Settings.gameColorStr,
+        align: 'center',
+        fontSize: 30,
+      })
+      this.outputs.info.alpha = 0.8;
+      this.outputs.info.anchor = new Phaser.Point(0.5, 0.5)
     },
+
+    update: function() {
+      if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+        game.score = 0;
+        game.level = 1;
+        game.state.start('Menu');
+      } 
+    },
+
+    render: function() {
+      this.g.clear();
+      renderDangerZones(this.g);
+    } 
 };
 
-},{}],9:[function(require,module,exports){
+},{"../renderdangerzones":6}],10:[function(require,module,exports){
 module.exports = GameStates = {
     Boot: require('./boot.js'),
     Menu: require('./menu.js'),
@@ -317,8 +366,10 @@ module.exports = GameStates = {
     End:  require('./end.js'),
 }
 
-},{"./boot.js":7,"./end.js":8,"./menu.js":10,"./play.js":11}],10:[function(require,module,exports){
+},{"./boot.js":8,"./end.js":9,"./menu.js":11,"./play.js":12}],11:[function(require,module,exports){
 var game;
+
+var renderDangerZones = require('../renderdangerzones');
 
 module.exports = Menu = function (_game) { 
     game = _game;
@@ -326,14 +377,43 @@ module.exports = Menu = function (_game) {
 
 Menu.prototype = {
     create: function () {
-        console.log('Game state: Menu');
-        // Todo :)
-
-        game.state.start('Play');
+      console.log('Game state: Menu');
+      this.g = game.add.graphics(0,0);
+    
+      this.outputs = {};
+      var lines = [
+        'NOISE TETRIS',
+        '',
+        'move with arrow keys',
+        'try to cancel waves out.',
+        "don't get too loud!",
+        '',
+        'spacebar to start'
+      ];
+      this.outputs.info = game.add.text(Settings.gameDims.x / 2, Settings.gameDims.y / 2, lines.join('\n'), {
+        fill: Settings.gameColorStr,
+        align: 'center',
+        fontSize: 20,
+      })
+      this.outputs.info.alpha = 0.8;
+      this.outputs.info.anchor = new Phaser.Point(0.5, 0.5)
     },
+
+    update: function() {
+      if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
+        game.score = 0;
+        game.state.start('Play');
+      } 
+    
+    },
+
+    render: function() {
+      this.g.clear();
+      renderDangerZones(this.g);
+    }
 };
 
-},{}],11:[function(require,module,exports){
+},{"../renderdangerzones":6}],12:[function(require,module,exports){
 var xy = window.XY;
 var Settings = window.Settings;
 var AssetData = require('../asset_data');
@@ -341,6 +421,7 @@ var Waveline = require('../waveline')
 var Data = require('../data')
 var Sound = require('../sound')
 var createWaveform = require('../createwaveform')
+var renderDangerZones = require('../renderdangerzones')
 var game;
 
 var Context;
@@ -360,8 +441,9 @@ Play.prototype = {
     },
 
     create: function () {
+      Play.paused = false;
       game.score = 0;
-      Play.level = 1;
+      game.level = 1;
 
       var L = Settings.gameDims.x;
       var n = 3;
@@ -373,7 +455,7 @@ Play.prototype = {
 
       Play.inputDirection = -1;
       Play.inputScale = 0;
-      Play.currentFallSpeed = Data.levels[Play.level].fallSpeed;
+      Play.currentFallSpeed = Data.levels[game.level].fallSpeed;
       Play.g = game.add.graphics(0,0);
 
       Play.currentWarning = {peak: xy(0, 0), zone: Data.dangerZones[0]}
@@ -476,7 +558,7 @@ Play.prototype = {
             newLevel = Data.scoreLevels[score];
           }
         }
-        if (newLevel !== Play.level) Play.levelUp(newLevel);
+        if (newLevel !== game.level) Play.levelUp(newLevel);
 
       }
     },
@@ -484,9 +566,6 @@ Play.prototype = {
       Play.g.clear();
 
       Play.renderDangerZones();
-
-      Play.outputs.warning.bringToTop();
-
       // MASTER WAVE 
       var widths = [
         /*
@@ -507,15 +586,20 @@ Play.prototype = {
         Play.waveline.render(Play.g);
       })
 
-      // INPUT WAVE
-      Play.g.lineStyle(3, Settings.gameColor, 1);
-      Play.inputWaveline.render(Play.g);
+      if (!Play.paused) {
+        Play.outputs.warning.bringToTop();
 
-      // Guide
-      var r = Data.dangerZones[Data.dangerZones.length - 1].radius;
-      Play.g.lineStyle(1, Settings.gameColor, 1);
-      Play.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
-      Play.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
+
+        // INPUT WAVE
+        Play.g.lineStyle(3, Settings.gameColor, 1);
+        Play.inputWaveline.render(Play.g);
+
+        // Guide
+        var r = Data.dangerZones[Data.dangerZones.length - 1].radius;
+        Play.g.lineStyle(1, Settings.gameColor, 1);
+        Play.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
+        Play.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
+      }
 
       // Output text
       Play.outputs.score.setText('SCORE: ' + game.score);
@@ -568,13 +652,13 @@ Play.detectDangerZone = function() {
 }
 
 Play.levelUp = function(newLevel) {
-  Play.level = newLevel;
+  game.level = newLevel;
 
   // Speed up the falling
-  Play.currentFallSpeed = Data.levels[Play.level].fallSpeed;
+  Play.currentFallSpeed = Data.levels[game.level].fallSpeed;
 
   // Up the sound frequency a bit
-  Sound.setMasterFrequency(Data.levels[Play.level].soundFrequency);
+  Sound.setMasterFrequency(Data.levels[game.level].soundFrequency);
 
   startTextFade(Play.outputs.levelup, 100, 0.6)
 }
@@ -606,10 +690,11 @@ Play.spawnInputWaveline = function() {
 }
 
 Play.death = function() {
-  //Play.outputs.death.setText('Death!')
-  //game.state.start('End')
   startTextFade(Play.outputs.death, 100, 0.6);
   Play.paused = true;
+  setTimeout(function() {
+    game.state.start('End')
+  }, 4000)
 }
 
 function chooseRandomPulse() {
@@ -645,7 +730,7 @@ function fadeText(text) {
 
 }
 
-},{"../asset_data":2,"../createwaveform":3,"../data":4,"../sound":6,"../waveline":12}],12:[function(require,module,exports){
+},{"../asset_data":2,"../createwaveform":3,"../data":4,"../renderdangerzones":6,"../sound":7,"../waveline":13}],13:[function(require,module,exports){
 var xy = window.XY;
 var Settings = window.Settings;
 
@@ -698,6 +783,7 @@ Waveline.prototype.moveBy = function(y) {
 Waveline.prototype.shift = function(n) {
   this.center += (n * Settings.dx);
   this.center = this.range[0] + (this.center - this.range[0]) % (this.range[1] - this.range[0]);
+
   var pts = this.points;
   for (var i = 0; i < Math.abs(n); i++) {
     if (n < 0) {

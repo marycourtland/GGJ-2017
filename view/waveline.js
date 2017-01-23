@@ -50,6 +50,7 @@ Waveline.prototype.moveBy = function(y) {
 Waveline.prototype.shift = function(n) {
   this.center += (n * Settings.dx);
   this.center = this.range[0] + (this.center - this.range[0]) % (this.range[1] - this.range[0]);
+
   var pts = this.points;
   for (var i = 0; i < Math.abs(n); i++) {
     if (n < 0) {

@@ -5,6 +5,7 @@ var Waveline = require('../waveline')
 var Data = require('../data')
 var Sound = require('../sound')
 var createWaveform = require('../createwaveform')
+var renderDangerZones = require('../renderdangerzones')
 var game;
 
 var Context;
@@ -24,8 +25,9 @@ Play.prototype = {
     },
 
     create: function () {
+      Play.paused = false;
       game.score = 0;
-      Play.level = 1;
+      game.level = 1;
 
       var L = Settings.gameDims.x;
       var n = 3;
@@ -37,7 +39,7 @@ Play.prototype = {
 
       Play.inputDirection = -1;
       Play.inputScale = 0;
-      Play.currentFallSpeed = Data.levels[Play.level].fallSpeed;
+      Play.currentFallSpeed = Data.levels[game.level].fallSpeed;
       Play.g = game.add.graphics(0,0);
 
       Play.currentWarning = {peak: xy(0, 0), zone: Data.dangerZones[0]}
@@ -140,7 +142,7 @@ Play.prototype = {
             newLevel = Data.scoreLevels[score];
           }
         }
-        if (newLevel !== Play.level) Play.levelUp(newLevel);
+        if (newLevel !== game.level) Play.levelUp(newLevel);
 
       }
     },
@@ -148,9 +150,6 @@ Play.prototype = {
       Play.g.clear();
 
       Play.renderDangerZones();
-
-      Play.outputs.warning.bringToTop();
-
       // MASTER WAVE 
       var widths = [
         /*
@@ -171,15 +170,20 @@ Play.prototype = {
         Play.waveline.render(Play.g);
       })
 
-      // INPUT WAVE
-      Play.g.lineStyle(3, Settings.gameColor, 1);
-      Play.inputWaveline.render(Play.g);
+      if (!Play.paused) {
+        Play.outputs.warning.bringToTop();
 
-      // Guide
-      var r = Data.dangerZones[Data.dangerZones.length - 1].radius;
-      Play.g.lineStyle(1, Settings.gameColor, 1);
-      Play.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
-      Play.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
+
+        // INPUT WAVE
+        Play.g.lineStyle(3, Settings.gameColor, 1);
+        Play.inputWaveline.render(Play.g);
+
+        // Guide
+        var r = Data.dangerZones[Data.dangerZones.length - 1].radius;
+        Play.g.lineStyle(1, Settings.gameColor, 1);
+        Play.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
+        Play.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
+      }
 
       // Output text
       Play.outputs.score.setText('SCORE: ' + game.score);
@@ -232,13 +236,13 @@ Play.detectDangerZone = function() {
 }
 
 Play.levelUp = function(newLevel) {
-  Play.level = newLevel;
+  game.level = newLevel;
 
   // Speed up the falling
-  Play.currentFallSpeed = Data.levels[Play.level].fallSpeed;
+  Play.currentFallSpeed = Data.levels[game.level].fallSpeed;
 
   // Up the sound frequency a bit
-  Sound.setMasterFrequency(Data.levels[Play.level].soundFrequency);
+  Sound.setMasterFrequency(Data.levels[game.level].soundFrequency);
 
   startTextFade(Play.outputs.levelup, 100, 0.6)
 }
