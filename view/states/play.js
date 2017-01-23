@@ -25,9 +25,7 @@ Play.prototype = {
 
     create: function () {
       game.score = 0;
-      game.level = 1;
-
-      game.line = []
+      Play.level = 1;
 
       var L = Settings.gameDims.x;
       var n = 3;
@@ -35,15 +33,14 @@ Play.prototype = {
       Play.waveline = new Waveline(0, Settings.gameDims.x, function(x) { return 10 * Math.sin((x-shift)*(n*2*Math.PI)/L); }, shift)
       Play.waveline.moveTo(Settings.gameDims.y/2);
 
-      // todo: what if there are too many of these? don't respawn them?
       Play.inputWaveline = Play.spawnInputWaveline();
 
-      game.inputDirection = -1;
-      game.inputScale = 0;
-      game.currentFallSpeed = Data.levels[game.level].fallSpeed;
-      game.g = game.add.graphics(0,0);
+      Play.inputDirection = -1;
+      Play.inputScale = 0;
+      Play.currentFallSpeed = Data.levels[Play.level].fallSpeed;
+      Play.g = game.add.graphics(0,0);
 
-      game.currentWarning = {peak: xy(0, 0), zone: Data.dangerZones[0]}
+      Play.currentWarning = {peak: xy(0, 0), zone: Data.dangerZones[0]}
 
 
       // Text outputs
@@ -63,14 +60,25 @@ Play.prototype = {
       Play.outputs.levelup.alpha = 0;
       Play.outputs.levelup.anchor = new Phaser.Point(0.5, 0.5)
 
+      Play.outputs.death = game.add.text(Settings.gameDims.x / 2, Settings.gameDims.y / 2, 'volume\noverload', {
+        fill: Settings.gameColorStr,
+        align: 'center',
+        fontSize: 200, 
+      })
+      Play.outputs.death.alpha = 0;
+      Play.outputs.death.anchor = new Phaser.Point(0.5, 0.5)
+
       Play.shiftCooldown = 0;
     },
 
     update: function () {
+      
+      if (Play.paused) return;
+
       // turny input thing (todo: remove??)
       if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
-        game.inputScale += Settings.rotateScale;
-        Play.inputWaveline.scaleTo(Math.sin(game.inputScale));
+        Play.inputScale += Settings.rotateScale;
+        Play.inputWaveline.scaleTo(Math.sin(Play.inputScale));
       }
 
       // ========================================= MOVING LEFT AND RIGHT 
@@ -94,26 +102,26 @@ Play.prototype = {
 
       // ========================================= TETRIS STYLE FAST-FORWARD 
       if (
-        (game.input.keyboard.isDown(Phaser.Keyboard.DOWN) && game.inputDirection == 1)
+        (game.input.keyboard.isDown(Phaser.Keyboard.DOWN) && Play.inputDirection == 1)
         ||
-        (game.input.keyboard.isDown(Phaser.Keyboard.UP) && game.inputDirection == -1)
+        (game.input.keyboard.isDown(Phaser.Keyboard.UP) && Play.inputDirection == -1)
       ) {
         // Move faster
-        Play.inputWaveline.moveBy(Settings.superFallSpeed * game.inputDirection);
+        Play.inputWaveline.moveBy(Settings.superFallSpeed * Play.inputDirection);
       }
       else {
-        Play.inputWaveline.moveBy(game.currentFallSpeed * game.inputDirection);
+        Play.inputWaveline.moveBy(Play.currentFallSpeed * Play.inputDirection);
       }
 
 
       // ========================================= WHEN THE WAVELINE IS READY TO MERGE 
       if (
-        (Play.inputWaveline.y > Play.waveline.y && game.inputDirection == 1)
+        (Play.inputWaveline.y > Play.waveline.y && Play.inputDirection == 1)
         ||
-        (Play.inputWaveline.y < Play.waveline.y && game.inputDirection == -1)
+        (Play.inputWaveline.y < Play.waveline.y && Play.inputDirection == -1)
        ) {
         game.score += 10; // TODO: custom score per input wave
-        game.inputDirection *= -1;
+        Play.inputDirection *= -1;
         Play.waveline.add(Play.inputWaveline);
         Play.inputWaveline = Play.spawnInputWaveline();
 
@@ -121,7 +129,7 @@ Play.prototype = {
 
         Play.detectDangerZone();
 
-        if (game.currentWarning.zone.death) {
+        if (Play.currentWarning.zone.death) {
           Play.death();
         }
 
@@ -132,12 +140,12 @@ Play.prototype = {
             newLevel = Data.scoreLevels[score];
           }
         }
-        if (newLevel !== game.level) Play.levelUp(newLevel);
+        if (newLevel !== Play.level) Play.levelUp(newLevel);
 
       }
     },
     render: function () {
-      game.g.clear();
+      Play.g.clear();
 
       Play.renderDangerZones();
 
@@ -159,27 +167,27 @@ Play.prototype = {
         {w: 3, a: 1},
       ]
       widths.forEach(function(item) {
-        game.g.lineStyle(item.w, Settings.gameColor, item.a)
-        Play.waveline.render(game.g);
+        Play.g.lineStyle(item.w, Settings.gameColor, item.a)
+        Play.waveline.render(Play.g);
       })
 
       // INPUT WAVE
-      game.g.lineStyle(3, Settings.gameColor, 1);
-      Play.inputWaveline.render(game.g);
+      Play.g.lineStyle(3, Settings.gameColor, 1);
+      Play.inputWaveline.render(Play.g);
 
       // Guide
       var r = Data.dangerZones[Data.dangerZones.length - 1].radius;
-      game.g.lineStyle(1, Settings.gameColor, 1);
-      game.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
-      game.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
+      Play.g.lineStyle(1, Settings.gameColor, 1);
+      Play.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
+      Play.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
 
       // Output text
       Play.outputs.score.setText('SCORE: ' + game.score);
 
       // Peak warning
-      Play.outputs.warning.setText(game.currentWarning.zone.text);
-      var warning_dy = (game.currentWarning.peak.y > 0) ? 10 : -30;
-      Play.outputs.warning.reset(game.currentWarning.peak.x, game.currentWarning.peak.y + Play.waveline.y + warning_dy);
+      Play.outputs.warning.setText(Play.currentWarning.zone.text);
+      var warning_dy = (Play.currentWarning.peak.y > 0) ? 10 : -30;
+      Play.outputs.warning.reset(Play.currentWarning.peak.x, Play.currentWarning.peak.y + Play.waveline.y + warning_dy);
 
       // Fade texts
       for (var t in Play.outputs) {
@@ -198,10 +206,10 @@ Play.renderDangerZones = function() {
     var y0 = Settings.gameDims.y/2;
     var xmax = Settings.gameDims.x;
 
-    game.g.beginFill(zone.color, 0.5)
-    game.g.drawRect(0, y0 - y, xmax, y - yPrev);
-    game.g.drawRect(0, y0 + yPrev, xmax, y - yPrev)
-    game.g.endFill();
+    Play.g.beginFill(zone.color, 0.5)
+    Play.g.drawRect(0, y0 - y, xmax, y - yPrev);
+    Play.g.drawRect(0, y0 + yPrev, xmax, y - yPrev)
+    Play.g.endFill();
   })
 }
 
@@ -217,20 +225,20 @@ Play.detectDangerZone = function() {
   var maxPeak = Play.waveline.getMax(); 
   var zone = getZone(maxPeak.y);
 
-  game.currentWarning = {
+  Play.currentWarning = {
     peak: maxPeak,
     zone: zone
   }
 }
 
 Play.levelUp = function(newLevel) {
-  game.level = newLevel;
+  Play.level = newLevel;
 
   // Speed up the falling
-  game.currentFallSpeed = Data.levels[game.level].fallSpeed;
+  Play.currentFallSpeed = Data.levels[Play.level].fallSpeed;
 
   // Up the sound frequency a bit
-  Sound.setMasterFrequency(Data.levels[game.level].soundFrequency);
+  Sound.setMasterFrequency(Data.levels[Play.level].soundFrequency);
 
   startTextFade(Play.outputs.levelup, 100, 0.6)
 }
@@ -252,7 +260,7 @@ Play.spawnInputWaveline = function() {
   waveline.center = x0; // sanity check :(
 
   // Is it going down from the top or up from below?
-  if (game.inputDirection === 1) {
+  if (Play.inputDirection === 1) {
     waveline.moveTo(Settings.inputStart);
   }
   else {
@@ -262,8 +270,11 @@ Play.spawnInputWaveline = function() {
 }
 
 Play.death = function() {
-  //Play.outputs.death.setText('Death!')
-  game.state.start('End')
+  startTextFade(Play.outputs.death, 100, 0.6);
+  Play.paused = true;
+  setTimeout(function() {
+    game.state.start('End')
+  }, 4000)
 }
 
 function chooseRandomPulse() {
