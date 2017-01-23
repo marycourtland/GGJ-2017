@@ -39,6 +39,10 @@ Data.levels = {
 }
 var totalLevels = Object.keys(Data.levels).length;
 
+for (var l in Data.levels) {
+  Data.levels[l].fallSpeed -= 1;
+}
+
 
 // Increase sound by a half step each level
 
@@ -49,26 +53,26 @@ for (var l = 2; l < totalLevels; l++ ) {
 }
 
 Data.dangerZones = [
-  {color: 0x00ff00, radius: 100, text: ""},
-  {color: 0xaaff00, radius: 150, text: "Keep an eye on this one"},
-  {color: 0xff4400, radius: 200, text: "Warning: Approaching destabilization!"},
-  {color: 0xff0000, radius: 250, text: "!!! DESTABILIZED !!", death: true},
+  {color: 0x00ff00, radius: 120, text: ""},
+  {color: 0xaaff00, radius: 180, text: "Keep an ear on this one"},
+  {color: 0xff4400, radius: 220, text: "Warning: Approaching Sound Limit!"},
+  {color: 0xff0000, radius: 250, text: "!!! SUPER LOUD !!!", death: true},
 ]
 
 Data.pulseTypes = {
   standard: {
     frequency: 0.1,
     params: [
-      {type: 'sine', magnitude: [40, 0.5], freq: [1/30, 0.01]},
-      {type: 'gaussian', spread: [100, 50], shift: [Settings.gameDims.x / 2, 0]}
+      {type: 'sine', magnitude: [30, 0.5], freq: [1/20, 0.01]},
+      {type: 'gaussian', spread: [100, 50]}
     ]
   },
   easy: {
     frequency: 0.9,
     params: [
       // 4 not 2 ???????
-      {type: 'sine', magnitude: [50, 20], freq: [1/400, 0.01], shift: [Settings.gameDims.x / 4, 0]},
-      {type: 'gaussian', spread: [400, 100], shift: [Settings.gameDims.x / 4, 0]}
+      {type: 'sine', magnitude: [50, 20], freq: [1/400, 0.01]},
+      {type: 'gaussian', spread: [400, 100]}
     ]
   }
 

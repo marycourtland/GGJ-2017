@@ -1,12 +1,13 @@
 var xy = window.XY;
 var Settings = window.Settings;
 
-module.exports = Waveline = function(x0, xmax, waveform) {
+module.exports = Waveline = function(x0, xmax, waveform, center) {
   this.range = [x0, xmax];
   this.points = [];
   this.lines = [];
   this.scale = 1;
   this.y = 0;
+  this.center = x0 + center % (xmax - x0);
 
   // TODO: fill in the rest of the X values from the game bounds
   
@@ -47,6 +48,8 @@ Waveline.prototype.moveBy = function(y) {
   this.update();
 }
 Waveline.prototype.shift = function(n) {
+  this.center += (n * Settings.dx);
+  this.center = this.range[0] + (this.center - this.range[0]) % (this.range[1] - this.range[0]);
   var pts = this.points;
   for (var i = 0; i < Math.abs(n); i++) {
     if (n < 0) {
@@ -96,7 +99,6 @@ Waveline.prototype.render = function(g) {
   })
 
   var p0 = renderedPoints[0];
-  g.lineStyle(3, Settings.gameColor, 1);
   g.moveTo(p0.x, p0.y)
   for (var i = 1; i < renderedPoints.length; i++) {
     var p = renderedPoints[i];

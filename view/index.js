@@ -3,7 +3,7 @@ module.exports = view = {};
 view.load = function(Context) {
     var GameStates = require('./states');
 
-    window.game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.AUTO, 'game', null, true, false);
+    window.game = new Phaser.Game(Settings.gameDims.x, Settings.gameDims.y, Phaser.AUTO, 'game', null, true, false);
 
     for (var stateName in GameStates) {
         var state = GameStates[stateName];

@@ -11,7 +11,6 @@ masterVolume.gain.value = 0.5;
 
 sound.masterWaveform = [
   {type: 'sine', magnitude: [1, 0], freq: [1/150, 0]},
-  //{type: 'sine', magnitude: [1, 0], freq: [0.007063086666666667, 0]},
 ];
 
 sound.setMasterFrequency = function(f) {

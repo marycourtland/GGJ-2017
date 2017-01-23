@@ -5,7 +5,7 @@ module.exports = function createWaveform(params) {
     var item = {};
     for (var field in p) {
       item[field] = p[field];
-      if (['magnitude', 'freq', 'spread', 'shift'].indexOf(field) !== -1) {
+      if (['magnitude', 'freq', 'spread'].indexOf(field) !== -1) {
         item[field] = p[field][0] + randFloat(p[field][1]);
       }
     }
@@ -13,6 +13,9 @@ module.exports = function createWaveform(params) {
   })
 
   return function(x) {
+    // recenter to here
+    x -= Settings.gameDims.x / 2;
+    
     var y = 1;
     var p;
     for (var i = 0; i < _params.length; i++) {

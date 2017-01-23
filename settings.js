@@ -12,6 +12,7 @@ Settings.gameDims = {x: 800, y: 600}
 Settings.dx = 1; // line resolution
 
 Settings.cell = 20; // everything discretized
+Settings.shiftCooldown = 5;
 
 // color of lines and stuff
 Settings.gameColor= 0x0011cc;

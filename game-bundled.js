@@ -12,6 +12,14 @@ window.onload = function() {
     View.load(Context);
 }
 
+// Prevent all scrolling
+window.addEventListener("keydown", function(e) {
+    // space, page up, page down and arrow keys:
+    if([32, 33, 34, 37, 38, 39, 40].indexOf(e.keyCode) > -1) {
+        e.preventDefault();
+    }
+}, false);
+
 },{"./view":5}],2:[function(require,module,exports){
 module.exports = AssetData = {
     //blue: {
@@ -28,7 +36,7 @@ module.exports = function createWaveform(params) {
     var item = {};
     for (var field in p) {
       item[field] = p[field];
-      if (['magnitude', 'freq', 'spread', 'shift'].indexOf(field) !== -1) {
+      if (['magnitude', 'freq', 'spread'].indexOf(field) !== -1) {
         item[field] = p[field][0] + randFloat(p[field][1]);
       }
     }
@@ -36,6 +44,9 @@ module.exports = function createWaveform(params) {
   })
 
   return function(x) {
+    // recenter to here
+    x -= Settings.gameDims.x / 2;
+    
     var y = 1;
     var p;
     for (var i = 0; i < _params.length; i++) {
@@ -105,6 +116,10 @@ Data.levels = {
 }
 var totalLevels = Object.keys(Data.levels).length;
 
+for (var l in Data.levels) {
+  Data.levels[l].fallSpeed -= 1;
+}
+
 
 // Increase sound by a half step each level
 
@@ -115,26 +130,26 @@ for (var l = 2; l < totalLevels; l++ ) {
 }
 
 Data.dangerZones = [
-  {color: 0x00ff00, radius: 100, text: ""},
-  {color: 0xaaff00, radius: 150, text: "Keep an eye on this one"},
-  {color: 0xff4400, radius: 200, text: "Warning: Approaching destabilization!"},
-  {color: 0xff0000, radius: 250, text: "!!! DESTABILIZED !!", death: true},
+  {color: 0x00ff00, radius: 120, text: ""},
+  {color: 0xaaff00, radius: 180, text: "Keep an ear on this one"},
+  {color: 0xff4400, radius: 220, text: "Warning: Approaching Sound Limit!"},
+  {color: 0xff0000, radius: 250, text: "!!! SUPER LOUD !!!", death: true},
 ]
 
 Data.pulseTypes = {
   standard: {
     frequency: 0.1,
     params: [
-      {type: 'sine', magnitude: [30, 0.5], freq: [1/30, 0.01]},
-      {type: 'gaussian', spread: [100, 50], shift: [Settings.gameDims.x / 2, 0]}
+      {type: 'sine', magnitude: [30, 0.5], freq: [1/20, 0.01]},
+      {type: 'gaussian', spread: [100, 50]}
     ]
   },
   easy: {
     frequency: 0.9,
     params: [
       // 4 not 2 ???????
-      {type: 'sine', magnitude: [50, 20], freq: [1/400, 0.01], shift: [Settings.gameDims.x / 4, 0]},
-      {type: 'gaussian', spread: [400, 100], shift: [Settings.gameDims.x / 4, 0]}
+      {type: 'sine', magnitude: [50, 20], freq: [1/400, 0.01]},
+      {type: 'gaussian', spread: [400, 100]}
     ]
   }
 
@@ -147,7 +162,7 @@ module.exports = view = {};
 view.load = function(Context) {
     var GameStates = require('./states');
 
-    window.game = new Phaser.Game(window.innerWidth, window.innerHeight, Phaser.AUTO, 'game', null, true, false);
+    window.game = new Phaser.Game(Settings.gameDims.x, Settings.gameDims.y, Phaser.AUTO, 'game', null, true, false);
 
     for (var stateName in GameStates) {
         var state = GameStates[stateName];
@@ -173,7 +188,6 @@ masterVolume.gain.value = 0.5;
 
 sound.masterWaveform = [
   {type: 'sine', magnitude: [1, 0], freq: [1/150, 0]},
-  //{type: 'sine', magnitude: [1, 0], freq: [0.007063086666666667, 0]},
 ];
 
 sound.setMasterFrequency = function(f) {
@@ -346,74 +360,100 @@ Play.prototype = {
     },
 
     create: function () {
+      game.score = 0;
+      game.level = 1;
+
       game.line = []
 
       var L = Settings.gameDims.x;
       var n = 3;
-      game.waveline = new Waveline(0, Settings.gameDims.x, function(x) { return 10 * Math.sin(x*(n*2*Math.PI)/L); })
-      game.waveline.moveTo(Settings.gameDims.y/2);
+      var shift = L/2;
+      Play.waveline = new Waveline(0, Settings.gameDims.x, function(x) { return 10 * Math.sin((x-shift)*(n*2*Math.PI)/L); }, shift)
+      Play.waveline.moveTo(Settings.gameDims.y/2);
 
       // todo: what if there are too many of these? don't respawn them?
-      game.inputWaveline = Play.spawnInputWaveline();
+      Play.inputWaveline = Play.spawnInputWaveline();
 
       game.inputDirection = -1;
       game.inputScale = 0;
-      game.currentFallSpeed = Settings.fallSpeed;
+      game.currentFallSpeed = Data.levels[game.level].fallSpeed;
       game.g = game.add.graphics(0,0);
 
       game.currentWarning = {peak: xy(0, 0), zone: Data.dangerZones[0]}
 
-      game.score = 0;
-      game.level = 1;
 
       // Text outputs
-      game.outputs = {}
-      game.outputs.score = game.add.text(Settings.gameDims.x / 2, 20, '', {fill: Settings.gameColorStr, align: 'center'})
-      game.outputs.score.anchor = new Phaser.Point(0.5, 0)
+      Play.outputs = {}
+      Play.outputs.score = game.add.text(Settings.gameDims.x / 2, 20, '', {fill: 'black', align: 'center'})
+      Play.outputs.score.anchor = new Phaser.Point(0.5, 0)
 
-      game.outputs.warning = game.add.text(0, 0, '', {fill: Settings.gameColorStr, align: 'center'})
-      game.outputs.warning.anchor = new Phaser.Point(0.5, 0)
-      game.outputs.warning.setStyle({font: '12pt Arial'})
+      Play.outputs.warning = game.add.text(0, 0, '', {fill: Settings.gameColorStr, align: 'center'})
+      Play.outputs.warning.anchor = new Phaser.Point(0.5, 0)
+      Play.outputs.warning.setStyle({font: '12pt Arial'})
+
+      Play.outputs.levelup = game.add.text(Settings.gameDims.x / 2, Settings.gameDims.y / 2, 'level up', {
+        fill: Settings.gameColorStr,
+        align: 'center',
+        fontSize: 200, 
+      })
+      Play.outputs.levelup.alpha = 0;
+      Play.outputs.levelup.anchor = new Phaser.Point(0.5, 0.5)
+
+      Play.shiftCooldown = 0;
     },
 
     update: function () {
+      // turny input thing (todo: remove??)
       if (game.input.keyboard.isDown(Phaser.Keyboard.SPACEBAR)) {
         game.inputScale += Settings.rotateScale;
-        game.inputWaveline.scaleTo(Math.sin(game.inputScale));
+        Play.inputWaveline.scaleTo(Math.sin(game.inputScale));
       }
 
-      if (game.input.keyboard.isDown(Phaser.Keyboard.LEFT)) {
-        game.inputWaveline.shift(-Settings.shiftSpeed);
+      // ========================================= MOVING LEFT AND RIGHT 
+      Play.shiftCooldown = Math.max(Play.shiftCooldown - 1, 0);
+
+      var leftDown = game.input.keyboard.isDown(Phaser.Keyboard.LEFT);
+      var rightDown = game.input.keyboard.isDown(Phaser.Keyboard.RIGHT);
+
+      if (leftDown || rightDown) {
+        if (Play.shiftCooldown === 0) {
+          var shift = 0;
+          if (leftDown) shift -= Settings.cell;
+          if (rightDown) shift += Settings.cell;
+          Play.inputWaveline.shift(shift);
+          Play.shiftCooldown = Settings.shiftCooldown;
+        }
+      }
+      else {
+        Play.shiftCooldown = 0;
       }
 
-      if (game.input.keyboard.isDown(Phaser.Keyboard.RIGHT)) {
-        game.inputWaveline.shift(Settings.shiftSpeed);
-      }
-
+      // ========================================= TETRIS STYLE FAST-FORWARD 
       if (
         (game.input.keyboard.isDown(Phaser.Keyboard.DOWN) && game.inputDirection == 1)
         ||
         (game.input.keyboard.isDown(Phaser.Keyboard.UP) && game.inputDirection == -1)
       ) {
         // Move faster
-        game.inputWaveline.moveBy(Settings.superFallSpeed * game.inputDirection);
+        Play.inputWaveline.moveBy(Settings.superFallSpeed * game.inputDirection);
       }
       else {
-        game.inputWaveline.moveBy(game.currentFallSpeed * game.inputDirection);
+        Play.inputWaveline.moveBy(game.currentFallSpeed * game.inputDirection);
       }
 
 
+      // ========================================= WHEN THE WAVELINE IS READY TO MERGE 
       if (
-        (game.inputWaveline.y > game.waveline.y && game.inputDirection == 1)
+        (Play.inputWaveline.y > Play.waveline.y && game.inputDirection == 1)
         ||
-        (game.inputWaveline.y < game.waveline.y && game.inputDirection == -1)
+        (Play.inputWaveline.y < Play.waveline.y && game.inputDirection == -1)
        ) {
         game.score += 10; // TODO: custom score per input wave
         game.inputDirection *= -1;
-        game.waveline.add(game.inputWaveline);
-        game.inputWaveline = Play.spawnInputWaveline();
+        Play.waveline.add(Play.inputWaveline);
+        Play.inputWaveline = Play.spawnInputWaveline();
 
-        Sound.playData(game.waveline.getDataForAudio(), 2);
+        Sound.playData(Play.waveline.getDataForAudio(), 2);
 
         Play.detectDangerZone();
 
@@ -437,18 +477,45 @@ Play.prototype = {
 
       Play.renderDangerZones();
 
-      game.outputs.warning.bringToTop();
+      Play.outputs.warning.bringToTop();
 
-      game.waveline.render(game.g);
-      game.inputWaveline.render(game.g);
+      // MASTER WAVE 
+      var widths = [
+        /*
+        {w: 20, a: 0.02},
+        {w: 18, a: 0.02},
+        {w: 16, a: 0.02},
+        {w: 14, a: 0.02},
+        {w: 12, a: 0.02},
+        {w: 10, a: 0.1},
+        {w: 6, a: 0.1},
+        {w: 5, a: 0.2},
+        {w: 4, a: 0.3},
+        */
+        {w: 3, a: 1},
+      ]
+      widths.forEach(function(item) {
+        game.g.lineStyle(item.w, Settings.gameColor, item.a)
+        Play.waveline.render(game.g);
+      })
+
+      // INPUT WAVE
+      game.g.lineStyle(3, Settings.gameColor, 1);
+      Play.inputWaveline.render(game.g);
+
+      // Guide
+      var r = Data.dangerZones[Data.dangerZones.length - 1].radius;
+      game.g.lineStyle(1, Settings.gameColor, 1);
+      game.g.moveTo(Play.inputWaveline.center, Settings.gameDims.y/2 - r);
+      game.g.lineTo(Play.inputWaveline.center, Settings.gameDims.y/2 + r);
 
       // Output text
-      game.outputs.score.setText('SCORE: ' + game.score);
+      Play.outputs.score.setText('SCORE: ' + game.score);
 
       // Peak warning
-      game.outputs.warning.setText(game.currentWarning.zone.text);
+      Play.outputs.warning.setText(game.currentWarning.zone.text);
       var warning_dy = (game.currentWarning.peak.y > 0) ? 10 : -30;
-      game.outputs.warning.reset(game.currentWarning.peak.x, game.currentWarning.peak.y + game.waveline.y + warning_dy);
+      Play.outputs.warning.reset(game.currentWarning.peak.x, game.currentWarning.peak.y + Play.waveline.y + warning_dy);
     }
 };
 
@@ -478,7 +545,7 @@ Play.detectDangerZone = function() {
       return current;
     }, null)
   }
-  var maxPeak = game.waveline.getMax(); 
+  var maxPeak = Play.waveline.getMax(); 
   var zone = getZone(maxPeak.y);
 
   game.currentWarning = {
@@ -505,9 +572,13 @@ Play.spawnInputWaveline = function() {
   // the real x0
   var x0 = Math.floor(Math.random() * Settings.gameDims.x);
 
-  var waveline = new Waveline(0, Settings.gameDims.x, createWaveform(chooseRandomPulse()));
+  // discretize it
+  x0 = x0 - (x0 % Settings.cell);
+
+  var waveline = new Waveline(0, Settings.gameDims.x, createWaveform(chooseRandomPulse()), x0_temporary);
 
   waveline.shift(x0 - x0_temporary);
+  waveline.center = x0; // sanity check :(
 
   // Is it going down from the top or up from below?
   if (game.inputDirection === 1) {
@@ -520,7 +591,7 @@ Play.spawnInputWaveline = function() {
 }
 
 Play.death = function() {
-  //game.outputs.death.setText('Death!')
+  //Play.outputs.death.setText('Death!')
   game.state.start('End')
 }
 
@@ -542,12 +613,13 @@ function chooseRandomPulse() {
 var xy = window.XY;
 var Settings = window.Settings;
 
-module.exports = Waveline = function(x0, xmax, waveform) {
+module.exports = Waveline = function(x0, xmax, waveform, center) {
   this.range = [x0, xmax];
   this.points = [];
   this.lines = [];
   this.scale = 1;
   this.y = 0;
+  this.center = x0 + center % (xmax - x0);
 
   // TODO: fill in the rest of the X values from the game bounds
   
@@ -588,6 +660,8 @@ Waveline.prototype.moveBy = function(y) {
   this.update();
 }
 Waveline.prototype.shift = function(n) {
+  this.center += (n * Settings.dx);
+  this.center = this.range[0] + (this.center - this.range[0]) % (this.range[1] - this.range[0]);
   var pts = this.points;
   for (var i = 0; i < Math.abs(n); i++) {
     if (n < 0) {
@@ -637,7 +711,6 @@ Waveline.prototype.render = function(g) {
   })
 
   var p0 = renderedPoints[0];
-  g.lineStyle(3, Settings.gameColor, 1);
   g.moveTo(p0.x, p0.y)
   for (var i = 1; i < renderedPoints.length; i++) {
     var p = renderedPoints[i];
