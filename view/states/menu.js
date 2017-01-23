@@ -13,7 +13,7 @@ Menu.prototype = {
     
       this.outputs = {};
       var lines = [
-        'NOISE TETRIS',
+        'SOUND TETRIS',
         '',
         'move with arrow keys',
         'try to cancel waves out.',
